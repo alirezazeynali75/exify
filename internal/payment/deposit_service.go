@@ -3,41 +3,35 @@ package payment
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 
 	"github.com/alirezazeynali75/exify/internal/db"
 	"github.com/alirezazeynali75/exify/internal/payment/dto"
-	"gorm.io/gorm"
+	"github.com/alirezazeynali75/exify/pkg/sql"
 )
-
-type depositAgent interface {
-	GetName() string
-	GetStatus() bool
-}
 
 type DepositService struct {
 	logger        *slog.Logger
 	session       db.Session
-	depositAgents []depositAgent
 	inboxRepo     inboxRepo
 	depositRepo   depositRepo
 	outboxRepo    outboxRepo
 }
 
-func (svc *DepositService) ListAllAvailableAgents(ctx context.Context) ([]string, error) {
-	agents := make([]string, 0)
-	for _, agent := range svc.depositAgents {
-		if agent.GetStatus() {
-			agents = append(agents, agent.GetName())
-		}
+func NewDepositService(
+	logger *slog.Logger,
+	session db.Session,
+	inboxRepo inboxRepo,
+	depositRepo depositRepo,
+	outboxRepo outboxRepo,
+) *DepositService {
+	return &DepositService{
+		logger:        logger,
+		session:       session,
+		inboxRepo:     inboxRepo,
+		outboxRepo:    outboxRepo,
+		depositRepo:   depositRepo,
 	}
-
-	if len(agents) == 0 {
-		return agents, ErrNoDepositAgentIsAvailable
-	}
-
-	return agents, nil
 }
 
 func (svc *DepositService) AddDeposit(ctx context.Context, d dto.NewDepositDTO) error {
@@ -64,7 +58,7 @@ func (svc *DepositService) AddDeposit(ctx context.Context, d dto.NewDepositDTO) 
 		return svc.outboxRepo.InsertNewEvent(ctx, string(stringifyEvent), topic)
 	})
 
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
+	if sql.IsDuplicateEntry(err) {
 		return nil
 	}
 	return err

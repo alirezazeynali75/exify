@@ -7,11 +7,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
 type Configs struct {
-	App App `envPrefix:"APP_"`
+	App   App       `envPrefix:"APP_"`
+	Mysql Mysql     `envPrefix:"MYSQL_"`
+	A     AProvider `envPrefix:"A_"`
+	B     BProvider `envPrefix:"B_"`
+	Http  Http      `envPrefix:"HTTP_"`
 }
-
 
 func Configure() (*Configs, error) {
 	err := godotenv.Load(".env")

@@ -26,6 +26,10 @@ func NewHttpCircuitBreaker(
 	}
 }
 
+func (hcb *httpCircuitBreaker) GetState() gobreaker.State {
+	return hcb.cb.State()
+}
+
 func (hcb *httpCircuitBreaker) Post(ctx context.Context, uri string, body string, header map[string]string) (string, error) {
 	resp, err := hcb.cb.Execute(func() (interface{}, error) {
 		return hcb.httpClient.Post(ctx, uri, body, header)

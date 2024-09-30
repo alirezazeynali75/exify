@@ -6,6 +6,7 @@ import (
 	"github.com/alirezazeynali75/exify/internal/events"
 	"github.com/alirezazeynali75/exify/internal/payment/dto"
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 type Deposit struct {
@@ -13,7 +14,7 @@ type Deposit struct {
 	TrackingId string
 	IBAN       string
 	Gateway    string
-	Amount     string
+	Amount     decimal.Decimal
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
@@ -42,7 +43,7 @@ func (d *Deposit) GetEvent() (events.Event[events.NewDepositEvent], string) {
 			TrackingId: d.TrackingId,
 			IBAN: d.IBAN,
 			Gateway: d.Gateway,
-			Amount: d.Amount,
+			Amount: d.Amount.String(),
 			CreatedAt: d.CreatedAt,
 			UpdatedAt: d.UpdatedAt,
 		},

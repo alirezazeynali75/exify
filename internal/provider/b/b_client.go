@@ -1,8 +1,8 @@
-package provider
+package b
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/xml"
 	"log/slog"
 
 	"github.com/alirezazeynali75/exify/internal/payment"
@@ -15,29 +15,41 @@ type httpClientWithCb interface {
 	Get(ctx context.Context, uri string, header map[string]string) (string, error)
 }
 
-type AProvider struct {
+type BProvider struct {
 	logger     *slog.Logger
 	httpClient httpClientWithCb
 	token string
 }
 
-func (p *AProvider) CanDo() bool {
+func NewBProvider(
+	logger *slog.Logger,
+	httpClient httpClientWithCb,
+	token string,
+) *BProvider {
+	return &BProvider{
+		logger: logger,
+		httpClient: httpClient,
+		token: token,
+	}
+}
+
+func (p *BProvider) CanDo(tx payment.Withdrawal) bool {
 	return p.httpClient.GetState() == gobreaker.StateOpen
 }
 
 
-func (p *AProvider) GetName() string {
-	return "AProvider"
+func (p *BProvider) GetName() string {
+	return "BProvider"
 }
 
-func (p *AProvider) Execute(ctx context.Context, tx payment.Withdrawal) (string, error) {
-	req := aProviderCashOutRequest{
+func (p *BProvider) Execute(ctx context.Context, tx payment.Withdrawal) (string, error) {
+	req := bProviderCashOutRequest{
 		ClientID: tx.ID,
 		Destination: tx.Destination,
 		Amount: tx.Amount,
 	}
 
-	reqStringify, err := json.Marshal(req)
+	reqStringify, err := xml.Marshal(req)
 
 	if err != nil {
 		return "", err
@@ -51,11 +63,11 @@ func (p *AProvider) Execute(ctx context.Context, tx payment.Withdrawal) (string,
 		return "", err
 	}
 
-	var response aProviderCashOutResponse
+	var response bProviderCashOutResponse
 
-	err = json.Unmarshal([]byte(resp), &response)
+	err = xml.Unmarshal([]byte(resp), &response)
 	if err != nil {
 		return "", err
 	}
-	return response.TrackingId, nil
+	return response.TrackingID, nil
 }

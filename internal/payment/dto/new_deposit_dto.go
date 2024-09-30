@@ -1,9 +1,11 @@
 package dto
 
+import "github.com/shopspring/decimal"
+
 type NewDepositDTO struct {
 	RequestId  string
 	TrackingId string
 	IBAN       string
 	Gateway    string
-	Amount     string
+	Amount     decimal.Decimal
 }

@@ -12,6 +12,14 @@ type WithdrawalRepo struct {
 	db *gorm.DB
 }
 
+func NewWithdrawalRepo(
+	db *gorm.DB,
+) *WithdrawalRepo {
+	return &WithdrawalRepo{
+		db: db,
+	}
+}
+
 func (repo *WithdrawalRepo) CreateNewTransaction(ctx context.Context, tx payment.Withdrawal) error {
 	model := FromDomainModel(tx)
 	err := db.DB(ctx, repo.db).Model(&WithdrawalModel{}).WithContext(ctx).Create(&model).Error

@@ -12,6 +12,13 @@ type OutboxRepo struct {
 	db *gorm.DB
 }
 
+func NewOutboxRepo(
+	db *gorm.DB,
+) *OutboxRepo {
+	return &OutboxRepo{
+		db: db,
+	}
+}
 
 func (repo *OutboxRepo) InsertNewEvent(ctx context.Context, event string, topic string) error {
 	model := OutboxModel{

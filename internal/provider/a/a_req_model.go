@@ -1,4 +1,4 @@
-package provider
+package a
 
 import "github.com/shopspring/decimal"
 

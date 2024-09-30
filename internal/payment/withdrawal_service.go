@@ -3,12 +3,11 @@ package payment
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 
 	"github.com/alirezazeynali75/exify/internal/db"
 	"github.com/alirezazeynali75/exify/internal/payment/dto"
-	"gorm.io/gorm"
+	"github.com/alirezazeynali75/exify/pkg/sql"
 )
 
 
@@ -71,9 +70,13 @@ func (svc *WithdrawalService) AddNewWithdrawTransaction(ctx context.Context, d d
 		}
 		return svc.transactionRepo.CreateNewTransaction(ctx, txData)
 	})
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
+	if sql.IsDuplicateEntry(err) {
 		svc.logger.Warn("this event has been processed")
 		return nil
+	}
+
+	if err != nil {
+		return err
 	}
 
 	trackingId, err := gateway.Execute(ctx, tx)
@@ -124,7 +127,7 @@ func (svc WithdrawalService) UpdateWithdrawalStatus(ctx context.Context, d dto.U
 		return svc.outboxRepo.InsertNewEvent(ctx, string(stringifyEvent), topic)
 	})
 
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
+	if sql.IsDuplicateEntry(err) {
 		return nil
 	}
 

@@ -24,7 +24,8 @@ RUN apt-get update && \
 COPY --from=builder /app/docker-entrypoint.sh ./entrypoint.sh
 COPY --from=builder /app/bin/exify ./exify
 COPY --from=builder /app/bin/exify-cli ./exify-cli
-
+RUN chmod +x ./entrypoint.sh
+RUN chmod +x ./exify-cli
 EXPOSE 3000
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ ]

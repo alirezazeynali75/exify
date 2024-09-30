@@ -1,22 +1,22 @@
 version: "3.3"
 
-networks:
-  redpanda_network:
-    driver: bridge
-
 services:
 
   exify:
-    build: .
+    image: exify:latest
+    depends_on:
+      - mysql
+      - redpanda-1
+    build:
+      context: .  # Directory of your service source code and Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     container_name: exify
     environment:
-      - MYSQL_DSN=root:1234@tcp(127.0.0.1:3436)/exify?charset=utf8&parseTime=True&loc=Local
+      - MYSQL_DSN=root:1234@tcp(mysql:3306)/exify?charset=utf8&parseTime=True&loc=Local
       - KAFKA_BROKERS=localhost:9092
-    depends_on:
-      - mysql
-      - redpanda-1
+    
 
   mysql:
     platform: linux/x86_64
@@ -63,8 +63,8 @@ services:
     container_name: redpanda-1
     volumes:
       - redpanda-1:/var/lib/redpanda/data
-    networks:
-      - redpanda_network
+    # networks:
+    #   - redpanda_network
     ports:
       - 8081:18081
       - 8082:8082
@@ -74,8 +74,8 @@ services:
     container_name: redpanda-console
     image: docker.redpanda.com/redpandadata/console:v2.2.4
     restart: always
-    networks:
-      - redpanda_network
+    # networks:
+    #   - redpanda_network
     entrypoint: /bin/sh
     command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
     environment:
@@ -99,3 +99,47 @@ services:
 volumes:
   redpanda-1: null
   mysql-data-exify:
+
+
+# version: '3.8'
+
+# services:
+#   exify-service:
+#     image: exify:latest  # Assuming you've built your Golang service Docker image
+#     build:
+#       context: .  # Directory of your service source code and Dockerfile
+#       dockerfile: Dockerfile
+#     depends_on:
+#       - mysql
+#       - redpanda
+#     environment:
+#       - MYSQL_DSN=root:1234@tcp(localhost:3346)/exify?charset=utf8&parseTime=True&loc=Local
+#       - KAFKA_BROKER=redpanda:9092
+#     ports:
+#       - "8080:8080"  # Expose your Golang service on port 8080
+
+#   mysql:
+#     image: mysql:8.0
+#     environment:
+#       MYSQL_ROOT_PASSWORD: rootpassword
+#       MYSQL_DATABASE: exify_db
+#       MYSQL_USER: user
+#       MYSQL_PASSWORD: password
+#     volumes:
+#       - mysql-data:/var/lib/mysql  # Persist MySQL data
+#       - ./compose/mysql/conf:/etc/mysql/conf.d
+#       - ./compose/mysql/initdb:/docker-entrypoint-initdb.d
+#     ports:
+#       - "3306:3306"
+
+#   redpanda:
+#     image: vectorized/redpanda:latest
+#     command: redpanda start --overprovisioned --smp 1 --memory 1G --reserve-memory 0M --node-id 0 --check=false --kafka-addr PLAINTEXT://0.0.0.0:9092 --advertise-kafka-addr PLAINTEXT://redpanda:9092
+#     ports:
+#       - "9092:9092"
+#     volumes:
+#       - redpanda-data:/var/lib/redpanda/data  # Persist Redpanda data
+
+# volumes:
+#   mysql-data:
+#   redpanda-data:

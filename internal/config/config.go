@@ -13,6 +13,7 @@ type Configs struct {
 	A     AProvider `envPrefix:"A_"`
 	B     BProvider `envPrefix:"B_"`
 	Http  Http      `envPrefix:"HTTP_"`
+	Kafka KafkaConfig `envPrefix:"KAFKA_"`
 }
 
 func Configure() (*Configs, error) {

@@ -14,13 +14,17 @@ import (
 
 	"github.com/alirezazeynali75/exify/internal/config"
 	session "github.com/alirezazeynali75/exify/internal/db"
+	"github.com/alirezazeynali75/exify/internal/eventbus"
 	"github.com/alirezazeynali75/exify/internal/inbox"
+	"github.com/alirezazeynali75/exify/internal/outbox"
+	"github.com/alirezazeynali75/exify/internal/outbox/job"
 	outboxRepository "github.com/alirezazeynali75/exify/internal/outbox/repo"
 	"github.com/alirezazeynali75/exify/internal/payment"
 	"github.com/alirezazeynali75/exify/internal/payment/presentation"
 	"github.com/alirezazeynali75/exify/internal/payment/repo"
 	"github.com/alirezazeynali75/exify/internal/provider/a"
 	"github.com/alirezazeynali75/exify/internal/provider/b"
+	"github.com/robfig/cron"
 
 	// "github.com/alirezazeynali75/exify/pkg/http"
 	"github.com/labstack/echo/v4"
@@ -101,6 +105,33 @@ func main() {
 		withdrawalService,
 	)
 
+	kafkaConfig, err := cnf.Kafka.ToSaramaConfig()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	eventbus := eventbus.NewKafka(
+		logger,
+		cnf.Kafka.Brokers,
+		kafkaConfig,
+	)
+
+	outboxService := outbox.NewOutboxService(
+		logger,
+		eventbus,
+		outboxRepo,
+	)
+
+	sendingJob := job.NewSendMessageJob(logger, outboxService)
+	revertJob := job.NewRevertStalledMessageJob(logger, outboxService)
+
+	c := cron.New()
+
+	sendingJob.Register(c)
+	revertJob.Register(c)
+
+	c.Start()
+
 	e := echo.New()
 
 	e.Use(middleware.Logger())
@@ -116,6 +147,7 @@ func main() {
 
 	listenAddress := fmt.Sprintf("%s:%s", cnf.Http.Address, cnf.Http.Port)
 
+	// c := cron.New()
 	go func() {
 		if err := e.Start(listenAddress); err != nil && errors.Is(err, xhttp.ErrServerClosed) {
 			logger.Warn("shutting down the server", slog.String("err", err.Error()))
@@ -125,6 +157,7 @@ func main() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT)
 	<-ch
+	c.Stop()
 	logger.Info("going to graceful shutdown")
 	err = e.Shutdown(context.TODO())
 	if err != nil {

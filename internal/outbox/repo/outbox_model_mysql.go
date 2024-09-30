@@ -25,3 +25,8 @@ func (m OutboxModel) ToDomainModel() outbox.Outbox {
 		UpdatedAt: m.UpdatedAt,
 	}
 }
+
+
+func (OutboxModel) TableName() string {
+	return "outboxs"
+}

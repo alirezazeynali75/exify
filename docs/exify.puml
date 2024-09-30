@@ -1,0 +1,637 @@
+@startuml
+namespace a {
+    class ACallbackController << (S,Aquamarine) >> {
+        - withdrawalService withdrawalService
+        - depositService depositService
+
+        + HandleWithdrawCallback(ctx echo.Context) error
+        + HandleDepositCallback(ctx echo.Context) error
+        + Register(gp *echo.Group) 
+
+    }
+    class AProvider << (S,Aquamarine) >> {
+        - logger *slog.Logger
+        - httpClient httpClientWithCb
+        - token string
+
+        + CanDo(tx payment.Withdrawal) bool
+        + GetName() string
+        + Execute(ctx context.Context, tx payment.Withdrawal) (string, error)
+
+    }
+    class AProviderMock << (S,Aquamarine) >> {
+        + CanDo(tx payment.Withdrawal) bool
+        + GetName() string
+        + Execute(ctx context.Context, tx payment.Withdrawal) (string, error)
+
+    }
+    class aProviderCashOutRequest << (S,Aquamarine) >> {
+        + ClientID string
+        + Destination string
+        + Amount decimal.Decimal
+
+    }
+    class aProviderCashOutResponse << (S,Aquamarine) >> {
+        + TrackingId string
+
+    }
+    class callbackWithdrawalData << (S,Aquamarine) >> {
+        + RequestID string
+        + TrackingID string
+        + IsSuccess bool
+
+        - toDto() dto.UpdateWithdrawalStatusDTO
+
+    }
+    class depositCallbackData << (S,Aquamarine) >> {
+        + RequestId string
+        + TrackingId string
+        + IBAN string
+        + Amount decimal.Decimal
+
+        - toDto() dto.NewDepositDTO
+
+    }
+    interface depositService  {
+        + AddDeposit(ctx context.Context, d dto.NewDepositDTO) error
+
+    }
+    interface httpClientWithCb  {
+        + GetState() gobreaker.State
+        + Post(ctx context.Context, uri string, body string, header <font color=blue>map</font>[string]string) (string, error)
+        + Get(ctx context.Context, uri string, header <font color=blue>map</font>[string]string) (string, error)
+
+    }
+    interface withdrawalService  {
+        + UpdateWithdrawalStatus(ctx context.Context, d dto.UpdateWithdrawalStatusDTO) error
+
+    }
+}
+
+"payment.paymentGateway" <|-- "a.AProvider"
+"payment.paymentGateway" <|-- "a.AProviderMock"
+
+namespace b {
+    class BCallbackController << (S,Aquamarine) >> {
+        - withdrawalService withdrawalService
+        - depositService depositService
+
+        + HandleWithdrawCallback(ctx echo.Context) error
+        + HandleDepositCallback(ctx echo.Context) error
+        + Register(gp *echo.Group) 
+
+    }
+    class BProvider << (S,Aquamarine) >> {
+        - logger *slog.Logger
+        - httpClient httpClientWithCb
+        - token string
+
+        + CanDo(tx payment.Withdrawal) bool
+        + GetName() string
+        + Execute(ctx context.Context, tx payment.Withdrawal) (string, error)
+
+    }
+    class BProviderMock << (S,Aquamarine) >> {
+        + CanDo(tx payment.Withdrawal) bool
+        + GetName() string
+        + Execute(ctx context.Context, tx payment.Withdrawal) (string, error)
+
+    }
+    class bProviderCashOutRequest << (S,Aquamarine) >> {
+        + XMLName xml.Name
+        + ClientID string
+        + Destination string
+        + Amount decimal.Decimal
+
+    }
+    class bProviderCashOutResponse << (S,Aquamarine) >> {
+        + XMLName xml.Name
+        + TrackingID string
+
+    }
+    class callbackWithdrawalData << (S,Aquamarine) >> {
+        + XMLName xml.Name
+        + RequestID string
+        + TrackingID string
+        + IsSuccess bool
+
+        - toDto() dto.UpdateWithdrawalStatusDTO
+
+    }
+    class depositCallbackData << (S,Aquamarine) >> {
+        + XMLName xml.Name
+        + RequestId string
+        + TrackingId string
+        + IBAN string
+        + Amount decimal.Decimal
+
+        - toDto() dto.NewDepositDTO
+
+    }
+    interface depositService  {
+        + AddDeposit(ctx context.Context, d dto.NewDepositDTO) error
+
+    }
+    interface httpClientWithCb  {
+        + GetState() gobreaker.State
+        + Post(ctx context.Context, uri string, body string, header <font color=blue>map</font>[string]string) (string, error)
+        + Get(ctx context.Context, uri string, header <font color=blue>map</font>[string]string) (string, error)
+
+    }
+    interface withdrawalService  {
+        + UpdateWithdrawalStatus(ctx context.Context, d dto.UpdateWithdrawalStatusDTO) error
+
+    }
+}
+
+"payment.paymentGateway" <|-- "b.BProvider"
+"payment.paymentGateway" <|-- "b.BProviderMock"
+
+namespace config {
+    class AProvider << (S,Aquamarine) >> {
+        + ClientURL string
+        + Token string
+
+        + GetCircuitBreakerConfig() *gobreaker.CircuitBreaker
+
+    }
+    class App << (S,Aquamarine) >> {
+        + Env string
+        + Name string
+
+    }
+    class BProvider << (S,Aquamarine) >> {
+        + ClientURL string
+        + Token string
+
+        + GetCircuitBreakerConfig() *gobreaker.CircuitBreaker
+
+    }
+    class Configs << (S,Aquamarine) >> {
+        + App App
+        + Mysql Mysql
+        + A AProvider
+        + B BProvider
+        + Http Http
+        + Kafka KafkaConfig
+
+    }
+    class Http << (S,Aquamarine) >> {
+        + Port string
+        + Address string
+
+    }
+    class KafkaConfig << (S,Aquamarine) >> {
+        + Brokers []string
+
+        + ToSaramaConfig() (*sarama.Config, error)
+
+    }
+    class Mysql << (S,Aquamarine) >> {
+        + DSN string
+
+    }
+}
+
+
+namespace db {
+    class GormSession << (S,Aquamarine) >> {
+        - db *gorm.DB
+        - txOptions *sql.TxOptions
+        - ctx context.Context
+
+        + Begin(ctx context.Context) (Session, error)
+        + Rollback() error
+        + Commit() error
+        + Context() context.Context
+        + Transaction(ctx context.Context, f <font color=blue>func</font>(context.Context) error) error
+
+    }
+    interface Session  {
+        + Begin(ctx context.Context) (Session, error)
+        + Transaction(ctx context.Context, f <font color=blue>func</font>(context.Context) error) error
+        + Rollback() error
+        + Commit() error
+        + Context() context.Context
+
+    }
+    class dbKey << (S,Aquamarine) >> {
+    }
+}
+
+"db.Session" <|-- "db.GormSession"
+
+namespace dto {
+    class NewDepositDTO << (S,Aquamarine) >> {
+        + RequestId string
+        + TrackingId string
+        + IBAN string
+        + Gateway string
+        + Amount decimal.Decimal
+
+    }
+    class NewWithdrawalDto << (S,Aquamarine) >> {
+        + EventId string
+        + ID string
+        + Amount decimal.Decimal
+        + Destination string
+
+    }
+    class UpdateWithdrawalStatusDTO << (S,Aquamarine) >> {
+        + EventId string
+        + TrackingId string
+        + IsSuccess bool
+
+    }
+}
+
+
+namespace eventbus {
+    class Kafka << (S,Aquamarine) >> {
+        - logger *slog.Logger
+        - brokers []string
+        - configs *sarama.Config
+
+        + Produce(ctx context.Context, msgs []MessageToPublish) error
+
+    }
+    class MessageToPublish << (S,Aquamarine) >> {
+        + Topic string
+        + Value string
+
+    }
+}
+
+"outbox.eventBus" <|-- "eventbus.Kafka"
+
+namespace events {
+    class Event << (S,Aquamarine) >> {
+        + ID string
+        + Payload T
+        + Version string
+        + CreatedAt time.Time
+
+    }
+    class FinishedEvent << (S,Aquamarine) >> {
+        + Type string
+        + TrackingId string
+        + Status string
+
+    }
+    class NewDepositEvent << (S,Aquamarine) >> {
+        + Type string
+        + ID string
+        + TrackingId string
+        + IBAN string
+        + Gateway string
+        + Amount string
+        + CreatedAt time.Time
+        + UpdatedAt time.Time
+
+    }
+    class ProcessingEvent << (S,Aquamarine) >> {
+        + Type string
+        + TrackingId string
+
+    }
+}
+
+
+namespace http {
+    class BasicAuthentication << (S,Aquamarine) >> {
+        + Username string
+        + Password string
+
+    }
+    class HttpClient << (S,Aquamarine) >> {
+        - baseUrl *url.URL
+        - defaultHeaders <font color=blue>map</font>[string]string
+        - basicAuth *BasicAuthentication
+
+        - getFullUrl(uri string) string
+
+        + Post(ctx context.Context, uri string, body string, header <font color=blue>map</font>[string]string) (string, error)
+        + Get(ctx context.Context, uri string, header <font color=blue>map</font>[string]string) (string, error)
+
+    }
+    class httpCircuitBreaker << (S,Aquamarine) >> {
+        - cb *gobreaker.CircuitBreaker
+        - httpClient httpClient
+
+        + GetState() gobreaker.State
+        + Post(ctx context.Context, uri string, body string, header <font color=blue>map</font>[string]string) (string, error)
+        + Get(ctx context.Context, uri string, header <font color=blue>map</font>[string]string) (string, error)
+
+    }
+    interface httpClient  {
+        + Post(ctx context.Context, uri string, body string, header <font color=blue>map</font>[string]string) (string, error)
+        + Get(ctx context.Context, uri string, header <font color=blue>map</font>[string]string) (string, error)
+
+    }
+}
+
+"http.httpClient" <|-- "http.HttpClient"
+"a.httpClientWithCb" <|-- "http.httpCircuitBreaker"
+"b.httpClientWithCb" <|-- "http.httpCircuitBreaker"
+"http.httpClient" <|-- "http.httpCircuitBreaker"
+
+namespace inbox {
+    class InboxModel << (S,Aquamarine) >> {
+        + EventID string
+        + UpdatedAt time.Time
+        + CreatedAt time.Time
+
+        + TableName() string
+
+    }
+    class InboxRepo << (S,Aquamarine) >> {
+        - db *gorm.DB
+
+        + InsertEvent(ctx context.Context, eventId string) error
+
+    }
+}
+
+"payment.inboxRepo" <|-- "inbox.InboxRepo"
+
+namespace job {
+    class RevertStalledMessageJob << (S,Aquamarine) >> {
+        - logger *slog.Logger
+        - svc outboxService
+
+        + Run() 
+        + Register(c *cron.Cron) 
+
+    }
+    class SendMessageJob << (S,Aquamarine) >> {
+        - logger *slog.Logger
+        - svc outboxService
+
+        + Run() 
+        + Register(c *cron.Cron) 
+
+    }
+    interface outboxService  {
+        + ProduceMessages(ctx context.Context) error
+        + RevertPending(ctx context.Context) error
+
+    }
+}
+
+
+namespace migrations {
+    class dbLogger << (S,Aquamarine) >> {
+        + Fatal(v ...<font color=blue>interface</font>{}) 
+        + Fatalf(format string, v ...<font color=blue>interface</font>{}) 
+        + Print(v ...<font color=blue>interface</font>{}) 
+        + Println(v ...<font color=blue>interface</font>{}) 
+        + Printf(format string, v ...<font color=blue>interface</font>{}) 
+
+    }
+}
+
+
+namespace outbox {
+    class Outbox << (S,Aquamarine) >> {
+        + ID uint64
+        + Payload string
+        + Topic string
+        + Status string
+        + CreatedAt time.Time
+        + UpdatedAt time.Time
+
+    }
+    class OutboxService << (S,Aquamarine) >> {
+        - logger *slog.Logger
+        - eventBus eventBus
+        - outboxRepo outboxRepo
+
+        + ProduceMessages(ctx context.Context) error
+        + RevertPending(ctx context.Context) error
+
+    }
+    class OutboxStatus << (S,Aquamarine) >> {
+        + String() string
+        + IsValid() bool
+        + MarshalText() ([]byte, error)
+        + UnmarshalText(text []byte) error
+
+    }
+    interface eventBus  {
+        + Produce(ctx context.Context, msgs []eventbus.MessageToPublish) error
+
+    }
+    class outbox.OutboxStatus << (T, #FF7700) >>  {
+    }
+    interface outboxRepo  {
+        + GetPendingEventsAndUpdateStatus(ctx context.Context) ([]Outbox, error)
+        + UpdateByID(ctx context.Context, id uint64, status OutboxStatus) error
+        + BatchUpdatePendingBasedOnTime(ctx context.Context, status OutboxStatus, maxAge time.Duration) error
+
+    }
+}
+
+"job.outboxService" <|-- "outbox.OutboxService"
+
+namespace payment {
+    class Deposit << (S,Aquamarine) >> {
+        + ID string
+        + TrackingId string
+        + IBAN string
+        + Gateway string
+        + Amount decimal.Decimal
+        + CreatedAt time.Time
+        + UpdatedAt time.Time
+
+        + GetEvent() (, string)
+
+    }
+    class DepositService << (S,Aquamarine) >> {
+        - logger *slog.Logger
+        - session db.Session
+        - inboxRepo inboxRepo
+        - depositRepo depositRepo
+        - outboxRepo outboxRepo
+
+        + AddDeposit(ctx context.Context, d dto.NewDepositDTO) error
+
+    }
+    class PaymentStatus << (S,Aquamarine) >> {
+        + String() string
+        + IsValid() bool
+        + MarshalText() ([]byte, error)
+        + UnmarshalText(text []byte) error
+
+    }
+    class Withdrawal << (S,Aquamarine) >> {
+        + ID string
+        + TrackingId string
+        + Destination string
+        + Gateway string
+        + Amount decimal.Decimal
+        + Status PaymentStatus
+        + CreatedAt time.Time
+        + UpdatedAt time.Time
+
+        + GetProcessingEvent() (, string)
+        + GetFinishedEvent() (, string)
+
+    }
+    class WithdrawalService << (S,Aquamarine) >> {
+        - logger *slog.Logger
+        - session db.Session
+        - outboxRepo outboxRepo
+        - paymentGateways []paymentGateway
+        - inboxRepo inboxRepo
+        - transactionRepo withdrawalRepo
+
+        - getGateway(tx Withdrawal) paymentGateway
+
+        + AddNewWithdrawTransaction(ctx context.Context, d dto.NewWithdrawalDto) error
+        + UpdateWithdrawalStatus(ctx context.Context, d dto.UpdateWithdrawalStatusDTO) error
+
+    }
+    interface depositRepo  {
+        + CreateNewTransaction(ctx context.Context, tx Deposit) error
+
+    }
+    interface inboxRepo  {
+        + InsertEvent(ctx context.Context, eventId string) error
+
+    }
+    interface outboxRepo  {
+        + InsertNewEvent(ctx context.Context, event string, topic string) error
+
+    }
+    class payment.PaymentStatus << (T, #FF7700) >>  {
+    }
+    interface paymentGateway  {
+        + CanDo(tx Withdrawal) bool
+        + GetName() string
+        + Execute(ctx context.Context, tx Withdrawal) (string, error)
+
+    }
+    interface withdrawalRepo  {
+        + CreateNewTransaction(ctx context.Context, tx Withdrawal) error
+        + UpdateTrackingId(ctx context.Context, txId string, trackingId string) error
+        + UpdateStatusByTrackingId(ctx context.Context, trackingId string, status PaymentStatus) error
+
+    }
+}
+
+"a.depositService" <|-- "payment.DepositService"
+"b.depositService" <|-- "payment.DepositService"
+"a.withdrawalService" <|-- "payment.WithdrawalService"
+"b.withdrawalService" <|-- "payment.WithdrawalService"
+"presentation.withdrawalService" <|-- "payment.WithdrawalService"
+
+namespace presentation {
+    class PaymentController << (S,Aquamarine) >> {
+        - withdrawalSvc withdrawalService
+
+        + AddNewWithdrawalRequestHandler(ctx echo.Context) error
+        + Register(gp *echo.Group) 
+
+    }
+    class addNewWithdrawalRequest << (S,Aquamarine) >> {
+        + RequestID string
+        + ID string
+        + Amount decimal.Decimal
+        + Destination string
+
+        + ToDto() dto.NewWithdrawalDto
+
+    }
+    interface withdrawalService  {
+        + AddNewWithdrawTransaction(ctx context.Context, d dto.NewWithdrawalDto) error
+
+    }
+}
+
+
+namespace repo {
+    class DepositModel << (S,Aquamarine) >> {
+        + ID string
+        + TrackingId string
+        + IBAN string
+        + Gateway string
+        + Amount decimal.Decimal
+        + CreatedAt time.Time
+        + UpdatedAt time.Time
+
+        + TableName() string
+        + ToDomainModel() payment.Deposit
+
+    }
+    class DepositRepo << (S,Aquamarine) >> {
+        - db *gorm.DB
+
+        + CreateNewTransaction(ctx context.Context, tx payment.Deposit) error
+
+    }
+    class OutboxModel << (S,Aquamarine) >> {
+        + ID uint64
+        + Payload string
+        + Topic string
+        + Status string
+        + CreatedAt time.Time
+        + UpdatedAt time.Time
+
+        + ToDomainModel() outbox.Outbox
+        + TableName() string
+
+    }
+    class OutboxRepo << (S,Aquamarine) >> {
+        - db *gorm.DB
+
+        + InsertNewEvent(ctx context.Context, event string, topic string) error
+        + GetPendingEventsAndUpdateStatus(ctx context.Context) ([]outbox.Outbox, error)
+        + UpdateByID(ctx context.Context, id uint64, status outbox.OutboxStatus) error
+        + BatchUpdatePendingBasedOnTime(ctx context.Context, status outbox.OutboxStatus, maxAge time.Duration) error
+
+    }
+    class WithdrawalModel << (S,Aquamarine) >> {
+        + ID string
+        + TrackingId sql.NullString
+        + Destination string
+        + Gateway string
+        + Amount decimal.Decimal
+        + Status string
+        + CreatedAt time.Time
+        + UpdatedAt time.Time
+
+        + TableName() string
+        + ToDomainModel() payment.Withdrawal
+
+    }
+    class WithdrawalRepo << (S,Aquamarine) >> {
+        - db *gorm.DB
+
+        + CreateNewTransaction(ctx context.Context, tx payment.Withdrawal) error
+        + UpdateTrackingId(ctx context.Context, txId string, trackingId string) error
+        + UpdateStatusByTrackingId(ctx context.Context, trackingId string, status payment.PaymentStatus) error
+
+    }
+}
+
+"payment.depositRepo" <|-- "repo.DepositRepo"
+"outbox.outboxRepo" <|-- "repo.OutboxRepo"
+"payment.outboxRepo" <|-- "repo.OutboxRepo"
+"payment.withdrawalRepo" <|-- "repo.WithdrawalRepo"
+
+namespace responses {
+    class ErrorResponse << (S,Aquamarine) >> {
+        + Message string
+
+    }
+    class Response << (S,Aquamarine) >> {
+        + Message string
+        + Data <font color=blue>interface</font>{}
+
+    }
+}
+
+
+"__builtin__.string" #.. "outbox.OutboxStatus"
+"__builtin__.string" #.. "payment.PaymentStatus"
+@enduml

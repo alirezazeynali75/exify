@@ -1,0 +1,101 @@
+version: "3.3"
+
+networks:
+  redpanda_network:
+    driver: bridge
+
+services:
+
+  exify:
+    build: .
+    ports:
+      - "3000:3000"
+    container_name: exify
+    environment:
+      - MYSQL_DSN=root:1234@tcp(127.0.0.1:3436)/exify?charset=utf8&parseTime=True&loc=Local
+      - KAFKA_BROKERS=localhost:9092
+    depends_on:
+      - mysql
+      - redpanda-1
+
+  mysql:
+    platform: linux/x86_64
+    image: mysql:8
+    container_name: exify_mysql
+    hostname: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=1234
+    ports:
+      - "3346:3306"
+    volumes:
+      - mysql-data-exify:/var/lib/mysql
+      - ./compose/mysql/conf:/etc/mysql/conf.d
+      - ./compose/mysql/initdb:/docker-entrypoint-initdb.d
+
+  redpanda-1:
+    restart: always
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:19092,external://0.0.0.0:9092
+      # Address the broker advertises to clients that connect to the Kafka API.
+      # Use the internal addresses to connect to the Redpanda brokers'
+      # from inside the same Docker network.
+      # Use the external addresses to connect to the Redpanda brokers'
+      # from outside the Docker network.
+      - --advertise-kafka-addr internal://redpanda-1:19092,external://localhost:9092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      # Address the broker advertises to clients that connect to the HTTP Proxy.
+      - --advertise-pandaproxy-addr internal://redpanda-1:18082,external://localhost:8082
+      - --schema-registry-addr internal://0.0.0.0:18081,external://0.0.0.0:8081
+      # Redpanda brokers use the RPC API to communicate with eachother internally.
+      - --rpc-addr redpanda-1:33145
+      - --advertise-rpc-addr redpanda-1:33145
+      # Tells Seastar (the framework Redpanda uses under the hood) to use 1 core on the system.
+      - --smp 4
+      # The amount of memory to make available to Redpanda.
+      - --memory 1G
+      # Mode dev-container uses well-known configuration properties for development in containers.
+      - --mode dev-container
+      # enable logs for debugging.
+      - --default-log-level=info
+    image: docker.redpanda.com/redpandadata/redpanda:v23.1.11
+    container_name: redpanda-1
+    volumes:
+      - redpanda-1:/var/lib/redpanda/data
+    networks:
+      - redpanda_network
+    ports:
+      - 8081:18081
+      - 8082:8082
+      - 9092:9092
+      - 9644:9644
+  console:
+    container_name: redpanda-console
+    image: docker.redpanda.com/redpandadata/console:v2.2.4
+    restart: always
+    networks:
+      - redpanda_network
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda-1:19092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda-1:18081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda-1:9644"]
+    ports:
+      - 8080:8080
+    depends_on:
+      - redpanda-1
+
+
+volumes:
+  redpanda-1: null
+  mysql-data-exify:
